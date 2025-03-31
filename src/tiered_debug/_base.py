@@ -41,6 +41,7 @@ place.
 import typing as t
 from os import environ
 import logging
+import inspect
 
 DebugLevel = t.Literal[1, 2, 3, 4, 5]
 
@@ -89,31 +90,44 @@ def set_stacklevel(level: int) -> None:
     _stacklevel = level
 
 
+def _get_logger_name(frame) -> str:
+    """Get the module name from the frame."""
+    mod = inspect.getmodule(frame[0])
+    if mod is None:
+        return "unknown"
+    return mod.__name__
+
+
 def lv1(msg: str) -> None:
     """Log a debug message at level 1."""
     # No condition here because this is the default level
-    logger.debug(f"DEBUG1 {msg}", stacklevel=2)
+    logger.name = _get_logger_name(inspect.stack()[1])
+    logger.debug(f"DEBUG1 {msg}", stacklevel=_stacklevel)
 
 
 def lv2(msg: str) -> None:
     """Log a debug message at level 2."""
     if 2 <= _level:
-        logger.debug(f"DEBUG2 {msg}", stacklevel=2)
+        logger.name = _get_logger_name(inspect.stack()[1])
+        logger.debug(f"DEBUG2 {msg}", stacklevel=_stacklevel)
 
 
 def lv3(msg: str) -> None:
     """Log a debug message at level 3."""
     if 3 <= _level:
-        logger.debug(f"DEBUG3 {msg}", stacklevel=2)
+        logger.name = _get_logger_name(inspect.stack()[1])
+        logger.debug(f"DEBUG3 {msg}", stacklevel=_stacklevel)
 
 
 def lv4(msg: str) -> None:
     """Log a debug message at level 4."""
     if 4 <= _level:
-        logger.debug(f"DEBUG4 {msg}", stacklevel=2)
+        logger.name = _get_logger_name(inspect.stack()[1])
+        logger.debug(f"DEBUG4 {msg}", stacklevel=_stacklevel)
 
 
 def lv5(msg: str) -> None:
     """Log a debug message at level 5."""
     if 5 <= _level:
-        logger.debug(f"DEBUG5 {msg}", stacklevel=2)
+        logger.name = _get_logger_name(inspect.stack()[1])
+        logger.debug(f"DEBUG5 {msg}", stacklevel=_stacklevel)
