@@ -37,6 +37,14 @@ Documentation = "https://github.com/untergeek/tiered-debug#readme"
 Issues = "https://github.com/untergeek/tiered-debug/issues"
 Source = "https://github.com/untergeek/tiered-debug"
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    'dist',
+    'docs',
+    'tests',
+    'pytest.ini',
+]
+
 [tool.hatch.version]
 path = "src/tiered_debug/__init__.py"
 
