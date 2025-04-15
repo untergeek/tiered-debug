@@ -35,99 +35,182 @@ In the event that you use this module as part of another module or class, you ma
 need to increase the ``stacklevel`` to 3. This can be done using the
 ``set_stacklevel()`` function. This will need to be done before any logging takes
 place.
+
+Each of the lv# functions can also manually override the stacklevel:
+
+.. code-block: python
+    def lv1(self, msg: str, stklvl: t.Optional[StackLevel] = self.stacklevel) -> None:
+
+The default value of ``stklvl`` is the global ``_stacklevel`` variable, which is
+set to 2 by default.
+
+The utility is evident in the ``begin_end()`` decorator function. Since this is
+a wrapper, it adds one more level of abstraction from the calling function, which
+means that the stacklevel needs to be increased.
 """
 
-# pylint: disable=C0103,W0603
+# pylint: disable=C0103,W0212,W0603,W0613,W0718
 import typing as t
 from os import environ
+import sys
+from functools import wraps
 import logging
-import inspect
 
 DebugLevel = t.Literal[1, 2, 3, 4, 5]
+StackLevel = t.Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]  # probably overkill > 4
 
 logger = logging.getLogger(__name__)
 
 ENVVAR = "TIERED_DEBUG_LEVEL"
-
-# Initialize global variables _level and _stacklevel
-_level = 1
-_stacklevel = 2
-
-# Check if the environment variable is set and is a valid integer
-env_level = environ.get(ENVVAR)
-if env_level is not None:
-    try:
-        _level = int(env_level)
-        if not 1 <= _level <= 5:
-            _level = 1
-    except ValueError:
-        _level = 1
+ENV_LEVEL = environ.get(ENVVAR, None)
 
 
-def set_level(level: DebugLevel) -> None:
-    """Set the global value for _level.
+class TieredDebug:
+    """Tiered Debug Logging Class"""
 
-    :param level: The debug level (1-5).
-    :type level: DebugLevel
-    :raises ValueError: If level is not between 1 and 5.
+    def __init__(self, level: DebugLevel = 1, stacklevel: StackLevel = 2) -> None:
+        self.stacklevel = stacklevel
+        if ENV_LEVEL is not None:
+            # Check if the environment variable is set and is a valid integer
+            try:
+                self.check_level(int(ENV_LEVEL))
+                self.level = int(ENV_LEVEL)
+            except ValueError:
+                self.level = 1
+        else:
+            # If the environment variable is not set, use the default level
+            self.level = level
+
+    def check_level(self, level: int) -> DebugLevel:
+        """Check if the level is between 1 and 5"""
+        if not 1 <= level <= 5:
+            raise ValueError("Debug level must be between 1 and 5")
+        return level
+
+    def set_level(self, level: DebugLevel, override: bool = False) -> None:
+        """Set :py:attr:`level` to the specified level if
+        - The environment variable is not set
+        - The override flag is set to True
+
+        :param level: The debug level (1-5).
+        :type level: DebugLevel
+        :param override: If True, override the environment variable.
+        :type override: bool
+        :raises ValueError: If level is not between 1 and 5.
+        """
+        if ENV_LEVEL is None or override:
+            # Either override is false and no envvar is set
+            #   or
+            # override is True
+            # If either condition is true, set the level
+            self.level = self.check_level(level)
+        # implied else is to do nothing. self.level remains unchanged
+
+    def set_stacklevel(self, level: StackLevel) -> None:
+        """Set :py:attr:`stacklevel` to the specified level
+
+        :param level: The stacklevel to use for the log message.
+        :type level: int
+        :raises ValueError: If level is not between 1 and 9.
+        """
+        if not 1 <= level <= 9:
+            raise ValueError("stacklevel must be between 1 and 9")
+        self.stacklevel = level
+
+    def lv1(self, msg: str, stklvl: t.Optional[StackLevel] = None) -> None:
+        """Log a debug message at level 1.
+        :param msg: The message to log.
+        :type msg: str
+        :param stklvl: The stacklevel to use for the log message.
+        :type stklvl: int
+        """
+        if stklvl is None:
+            stklvl = self.stacklevel
+        # No condition here because this is the default level
+        # Sending stklvel - 1 here because we're already getting the calling module
+        # at level 1 and stklvel defaults to 2.
+        logger.name = sys._getframe(stklvl - 1).f_globals["__name__"]
+        logger.debug(f"DEBUG1 {msg}", stacklevel=stklvl)
+
+    def lv2(self, msg: str, stklvl: t.Optional[StackLevel] = None) -> None:
+        """Log a debug message at level 2.
+        :param msg: The message to log.
+        :type msg: str
+        :param stklvl: The stacklevel to use for the log message.
+        :type stklvl: int
+        """
+        if stklvl is None:
+            stklvl = self.stacklevel
+        if 2 <= self.level:
+            logger.name = sys._getframe(stklvl - 1).f_globals["__name__"]
+            logger.debug(f"DEBUG2 {msg}", stacklevel=stklvl)
+
+    def lv3(self, msg: str, stklvl: t.Optional[StackLevel] = None) -> None:
+        """Log a debug message at level 3.
+        :param msg: The message to log.
+        :type msg: str
+        :param stklvl: The stacklevel to use for the log message.
+        :type stklvl: int
+        """
+        if stklvl is None:
+            stklvl = self.stacklevel
+        if 3 <= self.level:
+            logger.name = sys._getframe(stklvl - 1).f_globals["__name__"]
+            logger.debug(f"DEBUG3 {msg}", stacklevel=stklvl)
+
+    def lv4(self, msg: str, stklvl: t.Optional[StackLevel] = None) -> None:
+        """Log a debug message at level 4.
+        :param msg: The message to log.
+        :type msg: str
+        :param stklvl: The stacklevel to use for the log message.
+        :type stklvl: int
+        """
+        if stklvl is None:
+            stklvl = self.stacklevel
+        if 4 <= self.level:
+            logger.name = sys._getframe(stklvl - 1).f_globals["__name__"]
+            logger.debug(f"DEBUG4 {msg}", stacklevel=stklvl)
+
+    def lv5(self, msg: str, stklvl: t.Optional[StackLevel] = None) -> None:
+        """Log a debug message at level 5.
+        :param msg: The message to log.
+        :type msg: str
+        :param stklvl: The stacklevel to use for the log message.
+        :type stklvl: int
+        """
+        if stklvl is None:
+            stklvl = self.stacklevel
+        if 5 <= self.level:
+            logger.name = sys._getframe(stklvl - 1).f_globals["__name__"]
+            logger.debug(f"DEBUG5 {msg}", stacklevel=stklvl)
+
+
+def begin_end(cls, begin: t.Optional[int] = 2, end: t.Optional[int] = 3) -> t.Callable:
+    """Decorator to log the beginning and end of a function.
+
+    This decorator will log the beginning and end of a function call at the
+    specified levels, defaulting to 2 for the beginning and 3 for the ending.
+
+    :return: The decorated function.
+    :rtype: Callable
     """
-    global _level
-    if not 1 <= level <= 5:
-        raise ValueError("Debug level must be between 1 and 5")
-    _level = level
+    mmap = {
+        1: cls.lv1,
+        2: cls.lv2,
+        3: cls.lv3,
+        4: cls.lv4,
+        5: cls.lv5,
+    }
 
+    def decorator(func: t.Callable) -> t.Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            common = f"CALL: {func.__name__}()"
+            mmap[begin](f"BEGIN {common}", stklvl=cls.stacklevel + 1)
+            result = func(*args, **kwargs)
+            mmap[end](f"END {common}", stklvl=cls.stacklevel + 1)
+            return result
 
-def set_stacklevel(level: int) -> None:
-    """Set the global value for _stacklevel.
+        return wrapper
 
-    :param level: The stacklevel to use for the log message.
-    :type level: int
-    :raises ValueError: If level is not between 1 and 3.
-    """
-    global _stacklevel
-    if not 1 <= level <= 3:
-        raise ValueError("stacklevel must be between 1 and 3")
-    _stacklevel = level
-
-
-def _get_logger_name(frame) -> str:
-    """Get the module name from the frame."""
-    mod = inspect.getmodule(frame[0])
-    if mod is None:
-        return "unknown"
-    return mod.__name__
-
-
-def lv1(msg: str) -> None:
-    """Log a debug message at level 1."""
-    # No condition here because this is the default level
-    logger.name = _get_logger_name(inspect.stack()[1])
-    logger.debug(f"DEBUG1 {msg}", stacklevel=_stacklevel)
-
-
-def lv2(msg: str) -> None:
-    """Log a debug message at level 2."""
-    if 2 <= _level:
-        logger.name = _get_logger_name(inspect.stack()[1])
-        logger.debug(f"DEBUG2 {msg}", stacklevel=_stacklevel)
-
-
-def lv3(msg: str) -> None:
-    """Log a debug message at level 3."""
-    if 3 <= _level:
-        logger.name = _get_logger_name(inspect.stack()[1])
-        logger.debug(f"DEBUG3 {msg}", stacklevel=_stacklevel)
-
-
-def lv4(msg: str) -> None:
-    """Log a debug message at level 4."""
-    if 4 <= _level:
-        logger.name = _get_logger_name(inspect.stack()[1])
-        logger.debug(f"DEBUG4 {msg}", stacklevel=_stacklevel)
-
-
-def lv5(msg: str) -> None:
-    """Log a debug message at level 5."""
-    if 5 <= _level:
-        logger.name = _get_logger_name(inspect.stack()[1])
-        logger.debug(f"DEBUG5 {msg}", stacklevel=_stacklevel)
+    return decorator
