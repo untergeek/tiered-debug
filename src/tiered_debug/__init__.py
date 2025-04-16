@@ -1,10 +1,6 @@
 """Tiered Debugging Module"""
 
-from ._base import TieredDebug, ENVVAR, begin_end
+from ._base import TieredDebug
 
-__all__ = [
-    "TieredDebug",
-    "ENVVAR",
-    "begin_end",
-]
+__all__ = ["TieredDebug"]
 __version__ = "1.1.0"
