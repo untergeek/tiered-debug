@@ -62,24 +62,21 @@ StackLevel = t.Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]  # probably overkill > 4
 logger = logging.getLogger(__name__)
 
 ENVVAR = "TIERED_DEBUG_LEVEL"
-ENV_LEVEL = environ.get(ENVVAR, None)
 
 
 class TieredDebug:
     """Tiered Debug Logging Class"""
 
     def __init__(self, level: DebugLevel = 1, stacklevel: StackLevel = 2) -> None:
+        self.level = level
         self.stacklevel = stacklevel
-        if ENV_LEVEL is not None:
+        self.env_level = environ.get(ENVVAR, None)
+        if self.env_level is not None:
             # Check if the environment variable is set and is a valid integer
             try:
-                self.check_level(int(ENV_LEVEL))
-                self.level = int(ENV_LEVEL)
+                self.level = self.check_level(int(self.env_level))
             except ValueError:
                 self.level = 1
-        else:
-            # If the environment variable is not set, use the default level
-            self.level = level
 
     def check_level(self, level: int) -> DebugLevel:
         """Check if the level is between 1 and 5"""
@@ -98,7 +95,7 @@ class TieredDebug:
         :type override: bool
         :raises ValueError: If level is not between 1 and 5.
         """
-        if ENV_LEVEL is None or override:
+        if self.env_level is None or override:
             # Either override is false and no envvar is set
             #   or
             # override is True
