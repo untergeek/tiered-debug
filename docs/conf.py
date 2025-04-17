@@ -7,7 +7,19 @@
 
 import sys
 import os
-from tiered_debug import __version__ as ver
+
+# Extract the version from the __init__.py file
+
+path = "../src/tiered_debug/__init__.py"
+myinit = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+
+ver = ""
+with open(myinit, "r", encoding="utf-8") as file:
+    lines = file.readlines()
+
+for line in lines:
+    if line.startswith("__version__"):
+        ver = line.split('"')[1]
 
 COPYRIGHT_YEARS = "2025"
 # Use this starting 2026
