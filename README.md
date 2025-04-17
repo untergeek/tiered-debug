@@ -2,6 +2,7 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/tiered-debug.svg)](https://pypi.org/project/tiered-debug)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/tiered-debug.svg)](https://pypi.org/project/tiered-debug)
+[![Documentation Status](https://readthedocs.org/projects/tiered-debug/badge/?version=latest)](https://tiered-debug.readthedocs.io/en/latest/?badge=latest)
 
 -----
 
@@ -14,7 +15,11 @@
 
 ## Documentation
 
-Visit [tiered-debug.readthedocs.io](https://tiered-debug.readthedocs.io) for documentation.
+Visit the [tiered-debug documentation](https://tiered-debug.readthedocs.io/en/latest/) for:
+
+- [Installation Guide](https://tiered-debug.readthedocs.io/en/latest/installation.html)
+- [Usage Examples](https://tiered-debug.readthedocs.io/en/latest/usage.html)
+- [API Reference](https://tiered-debug.readthedocs.io/en/latest/api.html)
 
 ## License
 
