@@ -153,6 +153,7 @@ def test_add_handler(debug, caplog):
 
 def test_add_handler_duplicate(debug, caplog):
     """Test that add_handler skips duplicate handlers with an info message."""
+    caplog.set_level(logging.DEBUG)
     handler = logging.StreamHandler()
     debug.add_handler(handler)
     post_add = len(debug.logger.handlers)
@@ -249,6 +250,7 @@ def test_change_level_with_exception(debug):
 # Tests for log method
 def test_log_valid_level(debug, caplog):
     """Test that log method logs messages at valid levels."""
+    caplog.set_level(logging.DEBUG)
     debug.level = 3
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(2, "Test message", stklvl=1)
@@ -274,6 +276,7 @@ def test_log_with_default_stacklevel(debug, caplog):
 
 def test_log_with_custom_stacklevel(debug, caplog):
     """Test that log uses provided stacklevel."""
+    caplog.set_level(logging.DEBUG)
     expected = "pluggy._callers"
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(1, "Test message", 4)
@@ -310,6 +313,7 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
     :param should_log: Whether the message should be logged.
     :type should_log: bool
     """
+    caplog.set_level(logging.DEBUG)
     debug.level = debug_level
     debug.add_handler(
         logging.StreamHandler(),
@@ -334,6 +338,7 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
 
 def test_lv1_logs_unconditionally(debug, caplog):
     """Test that lv1 logs messages without checking debug level."""
+    caplog.set_level(logging.DEBUG)
     debug.level = 1
     debug.add_handler(
         logging.StreamHandler(),
