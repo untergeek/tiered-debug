@@ -31,11 +31,15 @@ test = [
     'pytest>=7.2.1',
     'pytest-cov',
 ]
+doc = ['sphinx', 'sphinx_rtd_theme']
 
 [project.urls]
-Documentation = "https://github.com/untergeek/tiered-debug#readme"
+Homepage = "https://github.com/untergeek/tiered-debug"
+"Bug Tracker" = "https://github.com/untergeek/tiered-debug/issues"
 Issues = "https://github.com/untergeek/tiered-debug/issues"
+Documentation = "https://tiered-debug.readthedocs.io/"
 Source = "https://github.com/untergeek/tiered-debug"
+"Release Notes" = "https://github.com/untergeek/tiered-debug/releases"
 
 [tool.hatch.build.targets.sdist]
 exclude = [

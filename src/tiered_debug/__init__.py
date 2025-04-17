@@ -1,6 +1,6 @@
 """Tiered Debugging Module"""
 
-from ._base import TieredDebug
+from ._base import TieredDebug, DebugLevel
 
-__all__ = ["TieredDebug"]
-__version__ = "1.1.0"
+__all__ = ["TieredDebug", "DebugLevel"]
+__version__ = "1.2.0"
