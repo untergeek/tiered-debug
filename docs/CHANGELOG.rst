@@ -12,12 +12,12 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Added
 ~~~~~
 
-- Unit tests for `debug.py` in `test_debug.py`.
+- Unit tests for ``debug.py`` in ``test_debug.py``.
 
 Changed
 ~~~~~~~
 
-- Fixed unit tests in `test_base.py` where setting the log level for caplog was required.
+- Fixed unit tests in ``test_base.py`` where setting the log level for caplog was required.
 
 
 [1.2.0] - 2025-04-17
