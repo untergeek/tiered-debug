@@ -1,232 +1,257 @@
-"""Tiered debug logging for multiple levels with stack tracing.
+"""Base implementation for tiered debug logging.
 
-This module provides the `TieredDebug` class for logging debug messages at tiered
-levels (1-5), with configurable stack levels for accurate function and line number
-reporting. It is designed for use in projects like ElasticKeeper and ElasticCheckpoint,
-integrating with Elasticsearch logging workflows. The debug level and stack level are
-set via constructor arguments or defaults. The logger is instance-level, allowing
-custom handlers (e.g., Elasticsearch) to be added via `add_handler`.
+The `TieredDebug` class provides multi-level debug logging with
+configurable stack tracing for accurate caller reporting. It supports
+logging at levels 1-5, with level 1 always logged and levels 2-5
+conditional on the configured debug level. Designed for projects like
+ElasticKeeper and ElasticCheckpoint, it allows flexible logger
+configuration and stack level adjustments.
 
-.. note::
-    Configure the logger with `add_handler` to include fields like ``%(funcName)s`` and
-    ``%(lineno)d`` for full compatibility with testing frameworks like pytest's caplog.
+Examples:
+    >>> from tiered_debug._base import TieredDebug
+    >>> debug = TieredDebug(level=2)
+    >>> debug.level
+    2
+    >>> import logging
+    >>> handler = logging.StreamHandler()
+    >>> debug.add_handler(
+    ...     handler, logging.Formatter("%(message)s")
+    ... )
+    >>> debug.lv1("Always logged")
+    >>> debug.lv3("Not logged")  # Ignored (level 3 > 2)
 """
 
-# pylint: disable=W0212
+# pylint: disable=R0913,R0917,W0212
 import logging
 import sys
-import inspect
-import platform
-from typing import Callable, Generator, Literal, Optional, Union, TYPE_CHECKING
-from functools import lru_cache
 from contextlib import contextmanager
+from functools import lru_cache
+from typing import Any, Dict, Iterator, Literal, Optional
 
-if TYPE_CHECKING:
-    from types import FrameType
-
+import platform
 
 DebugLevel = Literal[1, 2, 3, 4, 5]
 """Type hint for debug level (1-5)."""
 
-StackLevel = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9]
-"""Type hint for stack level (1-9)."""
-
-LevelKind = Literal["debug", "stack"]
-"""Type hint for level kind."""
-
-MAXLEVELS = {"debug": 5, "stack": 9}
-"""Maximum levels for debug and stack."""
-
 DEFAULTS = {"debug": 1, "stack": 3}
-"""Default levels for debug and stack."""
+"""Default values for debug level (1) and stack level (3)."""
 
 
 class TieredDebug:
-    """Tiered debug logging class for configurable, multi-level debugging.
+    """Tiered debug logging with configurable levels and stack tracing.
 
-    This class manages debug logging at levels 1-5, with adjustable stack levels
-    to report the caller's function and line number. It is suitable for projects
-    requiring detailed debugging, such as Elasticsearch workflows. The logger is
-    an instance variable, configurable via `add_handler`.
+    Supports debug logging at levels 1-5, with level 1 always logged and
+    levels 2-5 conditional on the configured debug level. Allows custom
+    stack levels for accurate caller reporting and flexible logger
+    configuration via handlers.
 
-    :ivar level: Current debug level (1-5), controlling which messages are logged.
-    :ivar stacklevel: Stack level (1-9) for reporting caller function and line number.
-    :ivar logger: The instance-level logger for debug messages.
+    Args:
+        level: Debug level (1-5, default 1). (int)
+        stacklevel: Stack level for caller reporting (1-9, default 3). (int)
+        logger_name: Name for the logger (default "tiered_debug._base"). (str)
+
+    Attributes:
+        level: Current debug level (1-5). (int)
+        stacklevel: Current stack level for caller reporting (1-9). (int)
+        logger: Configured logger instance. (logging.Logger)
 
     Examples:
-        .. code-block:: python
-
-            debug = TieredDebug()
-            debug.add_handler(logging.StreamHandler(), formatter=logging.Formatter(
-                "%(asctime)s %(funcName)s:%(lineno)d %(message)s"))
-            debug.lv1("Level 1 message")  # Logs with default stacklevel=3
-            debug.level = 4
-            debug.lv4("Level 4 message")  # Logs
-            debug.lv5("Level 5 message")  # Ignored
+        >>> debug = TieredDebug(level=2)
+        >>> debug.level
+        2
+        >>> import logging
+        >>> handler = logging.StreamHandler()
+        >>> debug.add_handler(
+        ...     handler, logging.Formatter("%(message)s")
+        ... )
+        >>> debug.lv1("Level 1 message")
+        >>> debug.lv3("Level 3 message")  # Not logged
     """
 
     def __init__(
         self,
-        level: Optional[DebugLevel] = None,
-        stacklevel: Optional[StackLevel] = None,
-        logger_name: Optional[str] = None,
+        level: int = DEFAULTS["debug"],
+        stacklevel: int = DEFAULTS["stack"],
+        logger_name: str = "tiered_debug._base",
     ) -> None:
-        """Initialize TieredDebug with optional level, stacklevel, and logger name.
-
-        :param level: Debug level (1-5). Defaults to 1.
-        :type level: Optional[DebugLevel]
-        :param stacklevel: Stack level (1-9). Defaults to 3.
-        :type stacklevel: Optional[StackLevel]
-        :param logger_name: Name for the logger. Defaults to module name.
-        :type logger_name: Optional[str]
-        """
-        self._level = self.check_val(level or DEFAULTS["debug"], "debug")
-        self._stacklevel = self.check_val(stacklevel or DEFAULTS["stack"], "stack")
-        self._logger = logging.getLogger(logger_name or __name__)
+        """Initialize a TieredDebug instance with specified settings."""
+        self._logger = logging.getLogger(logger_name)
+        self._level = self.check_val(level, "debug")
+        self._stacklevel = self.check_val(stacklevel, "stack")
 
     @property
-    def level(self) -> DebugLevel:
-        """Get the current debug level.
+    def level(self) -> int:
+        """Get the current debug level (1-5).
 
-        :return: The current debug level (1-5).
-        :rtype: DebugLevel
+        Returns:
+            int: Current debug level.
+
+        Examples:
+            >>> debug = TieredDebug(level=3)
+            >>> debug.level
+            3
         """
         return self._level
 
     @level.setter
-    def level(self, value: DebugLevel) -> None:
-        """Set the debug level, validating the input.
+    def level(self, value: int) -> None:
+        """Set the debug level, validating it is between 1 and 5.
 
-        :param value: Debug level (1-5).
-        :type value: DebugLevel
-        :raises ValueError: If value is not a valid debug level.
+        Args:
+            value: Debug level to set (1-5). (int)
         """
         self._level = self.check_val(value, "debug")
 
     @property
-    def stacklevel(self) -> StackLevel:
-        """Get the current stack level.
+    def stacklevel(self) -> int:
+        """Get the current stack level for caller reporting (1-9).
 
-        :return: The current stack level (1-9).
-        :rtype: StackLevel
+        Returns:
+            int: Current stack level.
+
+        Examples:
+            >>> debug = TieredDebug(stacklevel=4)
+            >>> debug.stacklevel
+            4
         """
         return self._stacklevel
 
     @stacklevel.setter
-    def stacklevel(self, value: StackLevel) -> None:
-        """Set the stack level, validating the input.
+    def stacklevel(self, value: int) -> None:
+        """Set the stack level, validating it is between 1 and 9.
 
-        :param value: Stack level (1-9).
-        :type value: StackLevel
-        :raises ValueError: If value is not a valid stack level.
+        Args:
+            value: Stack level to set (1-9). (int)
         """
         self._stacklevel = self.check_val(value, "stack")
 
     @property
     def logger(self) -> logging.Logger:
-        """Get the instance-level logger.
+        """Get the configured logger instance.
 
-        :return: The logger used for debug messages.
-        :rtype: logging.Logger
+        Returns:
+            logging.Logger: Logger instance for this TieredDebug object.
+
+        Examples:
+            >>> debug = TieredDebug()
+            >>> isinstance(debug.logger, logging.Logger)
+            True
         """
         return self._logger
 
-    def check_val(
-        self, level: Union[DebugLevel, StackLevel], kind: LevelKind
-    ) -> Union[DebugLevel, StackLevel]:
-        """Validate a level for the given kind (debug or stack).
+    def check_val(self, val: int, kind: str) -> int:
+        """Validate and return a debug or stack level, or default if invalid.
 
-        :param level: Debug or stack level to validate.
-        :type level: Union[DebugLevel, StackLevel]
-        :param kind: Type of level ("debug" or "stack").
-        :type kind: LevelKind
-        :return: Validated level, or default if invalid.
-        :rtype: Union[DebugLevel, StackLevel]
-        :raises ValueError: If kind is invalid or level is out of range.
+        Args:
+            val: Value to validate. (int)
+            kind: Type of value ("debug" or "stack"). (str)
+
+        Returns:
+            int: Validated value or default if invalid.
+
+        Raises:
+            ValueError: If kind is neither "debug" nor "stack".
+
+        Examples:
+            >>> debug = TieredDebug()
+            >>> debug.check_val(3, "debug")
+            3
+            >>> debug.check_val(0, "debug")  # Invalid, returns default
+            1
         """
-        if kind not in MAXLEVELS:
+        if kind == "debug":
+            valid = 1 <= val <= 5
+        elif kind == "stack":
+            valid = 1 <= val <= 9
+        else:
             raise ValueError(f"Invalid kind: {kind}. Must be 'debug' or 'stack'")
 
-        try:
-            level = int(level)  # Ensure level is an integer
-            if not 1 <= level <= MAXLEVELS[kind]:
-                raise ValueError(
-                    f"{kind} level must be between 1 and {MAXLEVELS[kind]}"
-                )
-        except (TypeError, ValueError) as exc:
-            self._logger.warning(
-                f"Invalid {kind} level: {level} ({type(exc).__name__}). "
-                f"Using default: {DEFAULTS[kind]}"
+        if not valid:
+            self.logger.warning(
+                f"Invalid {kind} level: {val}. Using default: {DEFAULTS[kind]}"
             )
-            level = DEFAULTS[kind]
-        return level  # type: ignore
+            return DEFAULTS[kind]
+        return val
 
     def add_handler(
-        self, handler: logging.Handler, formatter: Optional[logging.Formatter] = None
+        self,
+        handler: logging.Handler,
+        formatter: Optional[logging.Formatter] = None,
     ) -> None:
-        """Add a handler to the instance logger at DEBUG level.
+        """Add a handler to the logger if not already present.
 
-        If the handler is already attached, logs an info message and skips adding it.
+        Args:
+            handler: Handler to add to the logger. (logging.Handler)
+            formatter: Optional formatter for the handler. (logging.Formatter)
 
-        :param handler: Handler to add (e.g., StreamHandler, FileHandler).
-        :type handler: logging.Handler
-        :param formatter: Formatter for the handler. Optional.
-        :type formatter: Optional[logging.Formatter]
+        Examples:
+            >>> debug = TieredDebug()
+            >>> import logging
+            >>> handler = logging.StreamHandler()
+            >>> debug.add_handler(handler)
+            >>> handler in debug.logger.handlers
+            True
         """
-        if handler in self._logger.handlers:
-            self._logger.info("Handler already attached to logger, skipping")
-            return
-        handler.setLevel(logging.DEBUG)
-        if formatter is not None:
-            handler.setFormatter(formatter)
-        self._logger.addHandler(handler)
+        if handler not in self.logger.handlers:
+            if formatter:
+                handler.setFormatter(formatter)
+            handler.setLevel(logging.DEBUG)
+            self.logger.addHandler(handler)
+        else:
+            self.logger.info("Handler already attached to logger, skipping")
 
     @lru_cache(maxsize=1)
-    def _select_frame_getter(self) -> Callable[[int], "FrameType"]:
-        """Select the frame getter function based on Python implementation.
+    def _select_frame_getter(self) -> Any:
+        """Select the appropriate frame getter based on Python implementation.
 
-        :return: Function to get a stack frame (sys._getframe or inspect.currentframe).
-        :rtype: Callable[[int], FrameType]
+        Returns:
+            Callable: sys._getframe for CPython, inspect.currentframe otherwise.
+
+        Examples:
+            >>> debug = TieredDebug()
+            >>> import platform
+            >>> if platform.python_implementation() == "CPython":
+            ...     assert debug._select_frame_getter() is sys._getframe
         """
-        if platform.python_implementation() == "CPython":
-            return sys._getframe
-        return lambda level: (
-            inspect.currentframe().f_back
-            if level == 1
-            else inspect.currentframe().f_back.f_back
+        return (
+            sys._getframe
+            if platform.python_implementation() == "CPython"
+            else sys.modules["inspect"].currentframe
         )
 
-    def _get_logger_name(self, level: StackLevel) -> str:
-        """Get the logger name for the specified stack level.
+    def _get_logger_name(self, stack_level: int) -> str:
+        """Get the module name from the call stack at the specified level.
 
-        :param level: Stack level to inspect.
-        :type level: StackLevel
-        :return: Module name at the specified stack level, or 'unknown' if not found.
-        :rtype: str
+        Args:
+            stack_level: Stack level to inspect (1-9). (int)
+
+        Returns:
+            str: Module name or "unknown" if not found.
+
+        Examples:
+            >>> debug = TieredDebug()
+            >>> debug._get_logger_name(1)
+            '__main__'
         """
         try:
-            frame_getter = self._select_frame_getter()
-            frame = frame_getter(level)
-            return frame.f_globals["__name__"]
-        except (ValueError, AttributeError, KeyError):
+            frame = self._select_frame_getter()(stack_level)
+            return frame.f_globals.get("__name__", "unknown")
+        except (ValueError, AttributeError):
             return "unknown"
 
     @contextmanager
-    def change_level(self, level: DebugLevel) -> Generator[None, None, None]:
+    def change_level(self, level: int) -> Iterator[None]:
         """Temporarily change the debug level within a context.
 
-        :param level: Debug level to set temporarily.
-        :type level: DebugLevel
-        :yields: None
-        :rtype: contextlib._GeneratorContextManager[None]
+        Args:
+            level: Debug level to set temporarily (1-5). (int)
 
         Examples:
-            .. code-block:: python
-
-                debug = TieredDebug(level=2)
-                with debug.change_level(4):
-                    debug.lv4("This will log")  # Logs
-                debug.lv4("This won't log")  # Ignored
+            >>> debug = TieredDebug(level=2)
+            >>> with debug.change_level(4):
+            ...     assert debug.level == 4
+            >>> debug.level
+            2
         """
         original_level = self.level
         self.level = level
@@ -236,71 +261,250 @@ class TieredDebug:
             self.level = original_level
 
     def log(
-        self, level: DebugLevel, msg: str, stklvl: Optional[StackLevel] = None
+        self,
+        level: DebugLevel,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Log a debug message at the specified level.
+        """Log a message at the specified debug level.
 
-        :param level: Debug level (1-5) for the message.
-        :type level: DebugLevel
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (defaults to instance stacklevel).
-        :type stklvl: Optional[StackLevel]
-        :raises ValueError: If level is invalid.
+        Args:
+            level: Debug level for the message (1-5). (DebugLevel)
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            ValueError: If level is not between 1 and 5.
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=2)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.log(1, "Level 1 message: %s", "test")
+            >>> debug.log(3, "Level 3 message")  # Not logged
         """
-        if level not in (1, 2, 3, 4, 5):
+        if not 1 <= level <= 5:
             raise ValueError("Debug level must be 1-5")
-        stklvl = stklvl if stklvl is not None else self.stacklevel
-        if level <= self.level:
-            self._logger.name = self._get_logger_name(stklvl)
-            self._logger.debug(f"DEBUG{level} {msg}", stacklevel=stklvl)
 
-    def lv1(self, msg: str, stklvl: Optional[StackLevel] = None) -> None:
-        """Log a level 1 debug message.
+        if level > self.level:
+            return
 
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (optional).
-        :type stklvl: Optional[StackLevel]
+        if extra is not None and not isinstance(extra, dict):
+            raise TypeError("extra must be a dictionary or None")
+
+        if extra is None:
+            extra = {}
+
+        effective_stacklevel = self.stacklevel if stacklevel is None else stacklevel
+        effective_stacklevel = self.check_val(effective_stacklevel, "stack")
+
+        logger_name = self._get_logger_name(effective_stacklevel)
+        logger = logging.getLogger(logger_name)
+
+        logger.debug(
+            f"DEBUG{level} {msg}",
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=effective_stacklevel,
+            extra=extra,
+        )
+
+    def lv1(
+        self,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log a message at debug level 1 (always logged).
+
+        Args:
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=2)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.lv1("Level 1 message: %s", "test")
         """
-        self.log(1, msg, stklvl)
+        self.log(
+            1,
+            msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
 
-    def lv2(self, msg: str, stklvl: Optional[StackLevel] = None) -> None:
-        """Log a level 2 debug message.
+    def lv2(
+        self,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log a message at debug level 2 (logged if level >= 2).
 
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (optional).
-        :type stklvl: Optional[StackLevel]
+        Args:
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=2)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.lv2("Level 2 message: %s", "test")
         """
-        self.log(2, msg, stklvl)
+        self.log(
+            2,
+            msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
 
-    def lv3(self, msg: str, stklvl: Optional[StackLevel] = None) -> None:
-        """Log a level 3 debug message.
+    def lv3(
+        self,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log a message at debug level 3 (logged if level >= 3).
 
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (optional).
-        :type stklvl: Optional[StackLevel]
+        Args:
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=3)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.lv3("Level 3 message: %s", "test")
         """
-        self.log(3, msg, stklvl)
+        self.log(
+            3,
+            msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
 
-    def lv4(self, msg: str, stklvl: Optional[StackLevel] = None) -> None:
-        """Log a level 4 debug message.
+    def lv4(
+        self,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log a message at debug level 4 (logged if level >= 4).
 
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (optional).
-        :type stklvl: Optional[StackLevel]
+        Args:
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=4)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.lv4("Level 4 message: %s", "test")
         """
-        self.log(4, msg, stklvl)
+        self.log(
+            4,
+            msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
 
-    def lv5(self, msg: str, stklvl: Optional[StackLevel] = None) -> None:
-        """Log a level 5 debug message.
+    def lv5(
+        self,
+        msg: str,
+        *args,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Log a message at debug level 5 (logged if level >= 5).
 
-        :param msg: Message to log.
-        :type msg: str
-        :param stklvl: Stack level for caller reporting (optional).
-        :type stklvl: Optional[StackLevel]
+        Args:
+            msg: Message to log, optionally with format specifiers. (str)
+            *args: Arguments for message formatting.
+            exc_info: Include exception info if True. (bool)
+            stack_info: Include stack trace if True. (bool)
+            stacklevel: Stack level for caller reporting (1-9). (int)
+            extra: Extra metadata dictionary. (Dict[str, Any])
+
+        Raises:
+            TypeError: If extra is not a dictionary or None.
+
+        Examples:
+            >>> debug = TieredDebug(level=5)
+            >>> import logging
+            >>> debug.add_handler(logging.StreamHandler())
+            >>> debug.lv5("Level 5 message: %s", "test")
         """
-        self.log(5, msg, stklvl)
+        self.log(
+            5,
+            msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
