@@ -1,24 +1,20 @@
 """Unit tests for the tiered_debug.debug module.
 
-This module tests the global `debug` instance and `begin_end` decorator in `debug.py`,
-which provide project-wide debugging for tiered logging at levels 1-5. Tests cover
-initialization, decorator behavior, and logging integration, designed for projects
-like ElasticKeeper and ElasticCheckpoint.
+Tests the global `debug` instance and `begin_end` decorator in `debug.py`,
+which provide project-wide debugging for tiered logging at levels 1-5.
+Tests cover initialization, decorator behavior, and logging integration,
+designed for projects like ElasticKeeper and ElasticCheckpoint.
 
 Examples:
-    .. code-block:: python
-
-        from debug import debug, begin_end
-        import logging
-
-        debug.add_handler(logging.StreamHandler(), formatter=logging.Formatter(
-            "%(asctime)s %(funcName)s:%(lineno)d %(message)s"))
-
-        @begin_end(begin=2, end=3)
-        def test_func():
-            debug.lv1("Inside")
-
-        test_func()  # Logs BEGIN at level 2, "Inside" at level 1, END at level 3
+    >>> from tiered_debug.debug import debug, begin_end
+    >>> import logging
+    >>> debug.level = 3
+    >>> debug.add_handler(logging.StreamHandler(), logging.Formatter(
+    ...     "%(funcName)s:%(lineno)d %(message)s"))
+    >>> @begin_end(debug, begin=2, end=3, extra={"func": "test"})
+    ... def test_func():
+    ...     debug.lv1("Inside")
+    >>> test_func()  # Logs BEGIN at 2, Inside at 1, END at 3
 """
 
 # pylint: disable=W0107,W0212,W0621
@@ -26,7 +22,7 @@ import logging
 import pytest
 from tiered_debug import TieredDebug
 from tiered_debug.debug import begin_end, DEFAULT_BEGIN, DEFAULT_END
-from tiered_debug import debug as sample_debug
+from tiered_debug.debug import debug as sample_debug
 
 BASENAME = "tiered_debug.debug"
 """Module name for debug.logger"""
@@ -36,29 +32,50 @@ BASENAME = "tiered_debug.debug"
 def debug():
     """Create a fresh TieredDebug instance for each test.
 
-    :return: TieredDebug instance with default settings.
-    :rtype: TieredDebug
+    Returns:
+        TieredDebug: Instance with default settings.
+
+    Examples:
+        >>> debug = TieredDebug()
+        >>> isinstance(debug, TieredDebug)
+        True
     """
-    sample_debug.debug._logger.name = __name__
-    return sample_debug.debug
+    sample_debug._logger.name = __name__
+    return sample_debug
 
 
 @pytest.fixture
 def reset_debug(monkeypatch):
     """Reset the global debug instance for each test.
 
-    :param monkeypatch: Pytest monkeypatch fixture.
-    :return: Fresh TieredDebug instance as the global debug object.
-    :rtype: TieredDebug
+    Args:
+        monkeypatch: Pytest monkeypatch fixture.
+
+    Returns:
+        TieredDebug: Fresh TieredDebug instance as global debug.
+
+    Examples:
+        >>> from tiered_debug import debug
+        >>> isinstance(debug, TieredDebug)
+        True
     """
     new_debug = TieredDebug()
-    monkeypatch.setattr("debug.debug", new_debug)
+    monkeypatch.setattr("tiered_debug.debug.debug", new_debug)
     return new_debug
 
 
 # Tests for global debug instance
 def test_debug_instance(debug):
-    """Test that global debug is a TieredDebug instance with default settings."""
+    """Test that global debug is a TieredDebug instance with defaults.
+
+    Args:
+        debug: Global TieredDebug instance.
+
+    Examples:
+        >>> from tiered_debug import debug
+        >>> isinstance(debug, TieredDebug)
+        True
+    """
     assert isinstance(debug, TieredDebug)
     assert debug.level == 1  # Default debug level
     assert debug.stacklevel == 3  # Default stack level
@@ -66,7 +83,19 @@ def test_debug_instance(debug):
 
 
 def test_debug_add_handler(debug, caplog):
-    """Test that global debug supports handler configuration."""
+    """Test that global debug supports handler configuration.
+
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug import debug
+        >>> import logging
+        >>> handler = logging.StreamHandler()
+        >>> debug.add_handler(handler)
+        >>> debug.lv1("Test")
+    """
     caplog.set_level(logging.DEBUG)
     handler = logging.StreamHandler()
     formatter = logging.Formatter("%(funcName)s:%(lineno)d %(message)s")
@@ -80,20 +109,47 @@ def test_debug_add_handler(debug, caplog):
 
 # Tests for constants
 def test_default_begin():
-    """Test that DEFAULT_BEGIN is correctly set."""
+    """Test that DEFAULT_BEGIN is correctly set.
+
+    Examples:
+        >>> from tiered_debug.debug import DEFAULT_BEGIN
+        >>> DEFAULT_BEGIN
+        2
+    """
     assert DEFAULT_BEGIN == 2
-    assert isinstance(DEFAULT_BEGIN, int)  # DebugLevel is a Literal[int]
+    assert isinstance(DEFAULT_BEGIN, int)
 
 
 def test_default_end():
-    """Test that DEFAULT_END is correctly set."""
+    """Test that DEFAULT_END is correctly set.
+
+    Examples:
+        >>> from tiered_debug.debug import DEFAULT_END
+        >>> DEFAULT_END
+        3
+    """
     assert DEFAULT_END == 3
     assert isinstance(DEFAULT_END, int)
 
 
 # Tests for begin_end decorator
 def test_begin_end_default_levels(debug, caplog):
-    """Test that begin_end logs BEGIN and END at default levels."""
+    """Test that begin_end logs BEGIN and END at default levels.
+
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=3)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end()
+        ... def test_func():
+        ...     debug.lv1("Inside")
+        >>> test_func()
+    """
     caplog.set_level(logging.DEBUG)
     debug.level = 3
     debug.add_handler(
@@ -107,11 +163,9 @@ def test_begin_end_default_levels(debug, caplog):
 
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         test_func()
-        assert "BEGIN CALL: test_func()" in caplog.text
+        assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
         assert "DEBUG1 Inside" in caplog.text
-        assert "END CALL: test_func()" in caplog.text
-        assert caplog.records[0].message.startswith("DEBUG2")  # begin=2
-        assert caplog.records[2].message.startswith("DEBUG3")  # end=3
+        assert "DEBUG3 END CALL: test_func()" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -128,16 +182,23 @@ def test_begin_end_custom_levels(
 ):
     """Test that begin_end respects custom begin and end levels.
 
-    :param reset_debug: Fresh TieredDebug instance.
-    :param caplog: Pytest caplog fixture.
-    :param begin: Debug level for BEGIN message.
-    :type begin: int
-    :param end: Debug level for END message.
-    :type end: int
-    :param should_log_begin: Whether BEGIN should be logged.
-    :type should_log_begin: bool
-    :param should_log_end: Whether END should be logged.
-    :type should_log_end: bool
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+        begin: Debug level for BEGIN message. (int)
+        end: Debug level for END message. (int)
+        should_log_begin: Whether BEGIN should be logged. (bool)
+        should_log_end: Whether END should be logged. (bool)
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=2)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end(begin=1, end=2)
+        ... def test_func():
+        ...     pass
+        >>> test_func()
     """
     caplog.set_level(logging.DEBUG)
     debug.level = 2
@@ -159,7 +220,22 @@ def test_begin_end_custom_levels(
 
 
 def test_begin_end_invalid_levels(debug, caplog):
-    """Test that begin_end handles invalid begin/end levels with defaults."""
+    """Test that begin_end handles invalid begin/end levels with defaults.
+
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=3)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end(begin=6, end=7)
+        ... def test_func():
+        ...     pass
+        >>> test_func()
+    """
     caplog.set_level(logging.DEBUG)
     debug.level = 3
     debug.add_handler(
@@ -172,17 +248,29 @@ def test_begin_end_invalid_levels(debug, caplog):
         pass
 
     with caplog.at_level(logging.DEBUG):
-        test_func()
-        assert "Invalid begin level: 6. Using default: 2" in caplog.text
-        assert "Invalid end level: 7. Using default: 3" in caplog.text
-        assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
-        assert "DEBUG3 END CALL: test_func()" in caplog.text
+        with pytest.raises(ValueError):
+            test_func()
+        assert len(caplog.text) == 0
 
 
 def test_begin_end_custom_debug_instance(caplog):
-    """Test that begin_end works with a custom TieredDebug instance."""
+    """Test that begin_end works with a custom TieredDebug instance.
+
+    Args:
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=3)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end(debug, begin=2, end=3)
+        ... def test_func():
+        ...     debug.lv1("Inside")
+        >>> test_func()
+    """
     caplog.set_level(logging.DEBUG)
-    custom_debug = TieredDebug(level=2)
+    custom_debug = TieredDebug(level=3)
     custom_debug.add_handler(
         logging.StreamHandler(),
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
@@ -194,16 +282,63 @@ def test_begin_end_custom_debug_instance(caplog):
 
     with caplog.at_level(logging.DEBUG, logger=custom_debug.logger.name):
         test_func()
-        assert len(caplog.records) == 2
-        assert "BEGIN CALL: test_func()" in caplog.text
+        assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
         assert "DEBUG1 Inside" in caplog.text
-        # This won't appear because the context manager doesn't return from test_func
-        # before the end message is logged
-        # assert "END CALL: test_func()" in caplog.text
+        assert "DEBUG3 END CALL: test_func()" in caplog.text
+        assert len(caplog.records) == 3
 
 
 def test_begin_end_custom_stacklevel(debug, caplog):
-    """Test that begin_end uses custom stklvl correctly."""
+    """Test that begin_end uses custom stacklevel correctly.
+
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=3)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end(begin=2, end=3, stacklevel=4)
+        ... def test_func():
+        ...     pass
+        >>> test_func()
+    """
+    caplog.set_level(logging.DEBUG)
+    debug.level = 3
+    debug.add_handler(
+        logging.StreamHandler(),
+        formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
+    )
+    expected = "_pytest.python"
+
+    @begin_end(begin=2, end=3, stacklevel=3)
+    def test_func():
+        pass
+
+    with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
+        test_func()
+        assert caplog.records[0].name == expected
+
+
+def test_begin_end_with_extra(debug, caplog):
+    """Test that begin_end passes extra metadata correctly.
+
+    Args:
+        debug: Global TieredDebug instance.
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> import logging
+        >>> debug = TieredDebug(level=3)
+        >>> debug.add_handler(logging.StreamHandler())
+        >>> @begin_end(begin=2, end=3, extra={"func": "test"})
+        ... def test_func():
+        ...     pass
+        >>> test_func()
+    """
     caplog.set_level(logging.DEBUG)
     debug.level = 3
     debug.add_handler(
@@ -211,17 +346,30 @@ def test_begin_end_custom_stacklevel(debug, caplog):
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    @begin_end(begin=2, end=3, stklvl=4)
+    @begin_end(begin=2, end=3, extra={"func": "test"})
     def test_func():
         pass
 
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         test_func()
-        assert caplog.records[0].name == __name__  # Calls through debug, we're good
+        assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
+        assert "DEBUG3 END CALL: test_func()" in caplog.text
+        assert caplog.records[0].func == "test"
+        assert caplog.records[1].func == "test"
 
 
 def test_begin_end_preserves_function_metadata():
-    """Test that begin_end preserves function metadata via functools.wraps."""
+    """Test that begin_end preserves function metadata via functools.wraps.
+
+    Examples:
+        >>> from tiered_debug.debug import begin_end
+        >>> def test_func():
+        ...     '''Test docstring.'''
+        ...     pass
+        >>> decorated = begin_end()(test_func)
+        >>> decorated.__name__
+        'test_func'
+    """
 
     def test_func():
         """Test function docstring."""

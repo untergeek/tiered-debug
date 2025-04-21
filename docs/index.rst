@@ -3,12 +3,13 @@ tiered_debug documentation
 ==========================
 
 **tiered-debug** is a Python module for tiered debug logging at levels 1-5, with
-configurable stack levels for accurate function and line number reporting. It is
-designed for projects desiring detailed debugging.
+configurable stack levels for accurate caller reporting and extra metadata for
+enhanced log context. It is designed for projects requiring detailed debugging,
+such as Elasticsearch workflows.
 
-The module provides a ``TieredDebug`` class for logging and sample ``debug.py`` module
-demonstrates how to set up a global ``TieredDebug`` instance for project-wide use,
-complete with a ``begin_end`` decorator for tracking function call boundaries.  
+The module provides a ``TieredDebug`` class for logging, and the ``debug.py``
+module offers a global ``TieredDebug`` instance and a ``begin_end`` decorator to
+log function entry and exit at customizable debug levels.
 
 .. toctree::
    :maxdepth: 2

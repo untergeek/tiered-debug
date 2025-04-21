@@ -1,59 +1,76 @@
-# pylint: disable=C0103,C0114,E0401,W0611,W0622
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""Sphinx configuration for tiered-debug documentation.
 
-import sys
-import os
+Configures Sphinx to generate documentation for the tiered-debug package,
+using autodoc, Napoleon, doctest, viewcode, and intersphinx extensions.
+Imports metadata (__version__, __author__, __copyright__) from
+tiered_debug, leveraging module installation for ReadTheDocs. Sets up
+GitHub integration for "Edit Source" links and supports Python 3.8-3.13.
 
-# Extract the version from the __init__.py file
+Attributes:
+    project: Project name ("tiered-debug"). (str)
+    author: Author name from tiered_debug.__author__. (str)
+    version: Major.minor version (e.g., "1.3"). (str)
+    release: Full version (e.g., "1.3.0"). (str)
+    html_theme: Theme for HTML output, defaults to "sphinx_rtd_theme". (str)
 
-path = "../src/tiered_debug/__init__.py"
-myinit = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+Examples:
+    >>> project
+    'tiered-debug'
+    >>> author
+    'Aaron Mildenstein'
+    >>> version
+    '1.3'
+    >>> 'autodoc' in [ext.split('.')[-1] for ext in extensions]
+    True
+"""
 
-ver = ""
-with open(myinit, "r", encoding="utf-8") as file:
-    lines = file.readlines()
+# pylint: disable=C0103,E0401,W0622
 
-for line in lines:
-    if line.startswith("__version__"):
-        ver = line.split('"')[1]
-
-COPYRIGHT_YEARS = "2025"
-# Use this starting 2026
-# from datetime import datetime
-# COPYRIGHT_YEARS = f"2025-{datetime.now().year}"
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.insert(0, os.path.abspath("../"))
+# -- Imports and setup -----------------------------------------------------
+from os import environ
+from tiered_debug import __author__, __copyright__, __version__
 
 # -- Project information -----------------------------------------------------
 
 project = "tiered-debug"
-author = "Aaron Mildenstein"
-copyright = f"{COPYRIGHT_YEARS}, {author}"
-release = ver
+github_user = "untergeek"
+github_repo = "tiered-debug"
+github_branch = "main"
+author = __author__
+copyright = __copyright__
+release = __version__
 version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 
 extensions = [
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",  # For Google and NumPy docstring support
-    "sphinx.ext.viewcode",  # Add links to source code
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
 ]
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
 
 templates_path = ["_templates"]
-exclude_patterns = []
+exclude_patterns = ["_build"]
+source_suffix = ".rst"
+master_doc = "index"
 
 # -- Options for HTML output -------------------------------------------------
 
-html_theme = "alabaster"
-# html_static_path = ["_static"]
+pygments_style = "sphinx"
+html_theme = "sphinx_rtd_theme" if environ.get("READTHEDOCS") != "True" else None
+
+# Add "Edit Source" links into the template
+html_context = {
+    "display_github": True,
+    "github_user": github_user,
+    "github_repo": github_repo,
+    "github_version": github_branch,
+    "conf_py_path": "/docs/",
+}
 
 # -- Autodoc configuration ---------------------------------------------------
 
@@ -65,18 +82,8 @@ autodoc_default_options = {
     "show-inheritance": True,
 }
 
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
-
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
-
-    html_theme = "sphinx_rtd_theme"
+# -- Intersphinx configuration -----------------------------------------------
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.12", None),
-    "elasticsearch8": ("https://elasticsearch-py.readthedocs.io/en/v8.18.0", None),
-    "elastic-transport": (
-        "https://elastic-transport-python.readthedocs.io/en/stable",
-        None,
-    ),
 }
