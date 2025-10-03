@@ -16,6 +16,7 @@ Changes
 - Updated ``log``, ``lv1``, ``lv2``, ``lv3``, ``lv4``, and ``lv5`` methods in ``_base.py`` to use proper default values for ``exc_info`` (``False``), ``stack_info`` (``False``), and ``stacklevel`` (``1``) instead of ``None``.
 - Corrected tests ``test_log_with_default_stacklevel`` and ``test_log_levels`` to verify that the record logger name matches the logger name assigned in the fixture, rather than a hardcoded expected value.
 - Corrected ``test_add_handler`` and ``test_log_with_default_stacklevel`` in ``test_base.py`` to add ``caplog.set_level(logging.DEBUG)`` for proper DEBUG log capture. Kudos to @schoekek for identifying the issue and supplying the fix in #6. The nice thing is that it's not a code change, but an update to how testing is done.
+- Discovered that ReadTheDocs builds were failing due to conditional resulting in ``html_theme`` being set to ``None`` when building on ReadTheDocs. Updated ``docs/conf.py`` to always set ``html_theme`` to ``sphinx_rtd_theme``, at least for now.
 
 All tests passing.
 
