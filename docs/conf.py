@@ -61,7 +61,10 @@ master_doc = "index"
 # -- Options for HTML output -------------------------------------------------
 
 pygments_style = "sphinx"
-html_theme = "sphinx_rtd_theme" if environ.get("READTHEDOCS") != "True" else None
+html_theme = "sphinx_rtd_theme"
+# html_theme = (
+#     "sphinx_rtd_theme" if environ.get("READTHEDOCS") != "True" else "sphinx_rtd_theme"
+)
 
 # Add "Edit Source" links into the template
 html_context = {
