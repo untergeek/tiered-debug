@@ -237,6 +237,7 @@ def test_add_handler(debug, caplog):
         >>> handler in debug.logger.handlers
         True
     """
+    caplog.set_level(logging.DEBUG)
     handler = logging.StreamHandler()
     formatter = logging.Formatter("%(funcName)s:%(lineno)d %(message)s")
     debug.add_handler(handler, formatter=formatter)
@@ -504,13 +505,12 @@ def test_log_with_default_stacklevel(debug, caplog):
         >>> debug.add_handler(handler)
         >>> debug.log(1, "Test: %s", "value")
     """
+    caplog.set_level(logging.DEBUG)
     debug.stacklevel = 3
-    expected = "_pytest.python"
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(1, "Test message: %s", "value")
-        assert (
-            caplog.records[0].name == expected
-        )  # In testing, stacklevel 3 points to "_pytest.python"
+        # The name should match the logger name assigned in the fixture
+        assert caplog.records[0].name == debug.logger.name
 
 
 def test_log_with_custom_stacklevel(debug, caplog):
@@ -587,7 +587,8 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
         expected = f"DEBUG{log_level} Test message level {log_level}: value"
         assert (expected in caplog.text) == should_log
         if should_log:
-            assert caplog.records[0].name == __name__
+            # Should match the logger name assigned in the fixture
+            assert caplog.records[0].name == debug.logger.name
 
 
 def test_lv1_logs_unconditionally(debug, caplog):
