@@ -6,6 +6,20 @@ All notable changes to ``tiered-debug`` will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+[1.3.1] - 2025-10-03
+--------------------
+
+Changes
+~~~~~~~
+
+- Updated version to 1.3.1 for patch release.
+- Updated ``log``, ``lv1``, ``lv2``, ``lv3``, ``lv4``, and ``lv5`` methods in ``_base.py`` to use proper default values for ``exc_info`` (``False``), ``stack_info`` (``False``), and ``stacklevel`` (``1``) instead of ``None``.
+- Corrected tests ``test_log_with_default_stacklevel`` and ``test_log_levels`` to verify that the record logger name matches the logger name assigned in the fixture, rather than a hardcoded expected value.
+- Corrected ``test_add_handler`` and ``test_log_with_default_stacklevel`` in ``test_base.py`` to add ``caplog.set_level(logging.DEBUG)`` for proper DEBUG log capture. Kudos to @schoekek for identifying the issue and supplying the fix in #6. The nice thing is that it's not a code change, but an update to how testing is done.
+
+All tests passing.
+
+
 [1.3.0] - 2025-04-21
 --------------------
 
