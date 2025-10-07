@@ -35,7 +35,7 @@ if now.year == FIRST_YEAR:
 else:
     COPYRIGHT_YEARS = f"2025-{now.year}"
 
-__version__ = "1.3.1"
+__version__ = "1.4.0"
 __author__ = "Aaron Mildenstein"
 __copyright__ = f"{COPYRIGHT_YEARS}, Aaron Mildenstein"
 __license__ = "Apache 2.0"

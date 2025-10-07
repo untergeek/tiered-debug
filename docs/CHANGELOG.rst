@@ -6,6 +6,23 @@ All notable changes to ``tiered-debug`` will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+[1.4.0] - 2025-10-07
+--------------------
+
+Changes
+~~~~~~~
+
+A bit of a reversion from 1.3.1 with regards to default logger kwargs, but with a better approach.
+
+- Updated version to 1.4.0 for release.
+- Configure ``log``, ``lv1``, ``lv2``, ``lv3``, ``lv4``, and ``lv5`` methods in ``_base.py`` to use default ``None`` value for ``exc_info``, ``stack_info``, ``stacklevel``, and ``extra``. If ``None`` is provided, the logging module will apply its own defaults (``exc_info=False``, ``stack_info=False``, ``extra={}``, and then set ``stacklevel`` to the `effective` stack level).
+- Pruned unused import in ``docs/conf.py``.
+- Updated ``debug.py`` to use ``Literal[1, 2, 3, 4, 5]`` for ``begin`` and ``end`` parameters in ``begin_end`` decorator in order to match the typing in ``_base.py``. This cleans up MyPy and other linter warnings.
+- Updated ``test_base.py`` tests ``test_log_with_default_stacklevel`` and ``test_log_levels`` to collect the logger name from the fixture rather than hardcoding an expected value.
+
+All tests passing. Tested pre-release in a sample project and everything looks good.
+
+
 [1.3.1] - 2025-10-03
 --------------------
 

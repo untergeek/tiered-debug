@@ -19,7 +19,7 @@ Examples:
     >>> author
     'Aaron Mildenstein'
     >>> version
-    '1.3'
+    '1.4'
     >>> 'autodoc' in [ext.split('.')[-1] for ext in extensions]
     True
 """
@@ -27,7 +27,6 @@ Examples:
 # pylint: disable=C0103,E0401,W0622
 
 # -- Imports and setup -----------------------------------------------------
-from os import environ
 from tiered_debug import __author__, __copyright__, __version__
 
 # -- Project information -----------------------------------------------------
