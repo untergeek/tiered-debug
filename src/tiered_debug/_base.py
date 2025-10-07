@@ -265,9 +265,9 @@ class TieredDebug:
         level: DebugLevel,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at the specified debug level.
@@ -298,6 +298,12 @@ class TieredDebug:
         if level > self.level:
             return
 
+        if exc_info is None:
+            exc_info = False
+
+        if stack_info is None:
+            stack_info = False
+
         if extra is not None and not isinstance(extra, dict):
             raise TypeError("extra must be a dictionary or None")
 
@@ -323,9 +329,9 @@ class TieredDebug:
         self,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at debug level 1 (always logged).
@@ -361,9 +367,9 @@ class TieredDebug:
         self,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at debug level 2 (logged if level >= 2).
@@ -399,9 +405,9 @@ class TieredDebug:
         self,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at debug level 3 (logged if level >= 3).
@@ -437,9 +443,9 @@ class TieredDebug:
         self,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at debug level 4 (logged if level >= 4).
@@ -475,9 +481,9 @@ class TieredDebug:
         self,
         msg: str,
         *args,
-        exc_info: Optional[bool] = False,
-        stack_info: Optional[bool] = False,
-        stacklevel: Optional[int] = 1,
+        exc_info: Optional[bool] = None,
+        stack_info: Optional[bool] = None,
+        stacklevel: Optional[int] = None,
         extra: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Log a message at debug level 5 (logged if level >= 5).

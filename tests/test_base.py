@@ -507,10 +507,27 @@ def test_log_with_default_stacklevel(debug, caplog):
     """
     caplog.set_level(logging.DEBUG)
     debug.stacklevel = 3
+    expected = debug._get_logger_name(2)
+    # So why does expected look for level 2? Because the logger name is determined
+    # by the frame at the stack level from which it was called. This is confusing
+    # because log() itself calls _get_logger_name. However, when _get_logger_name
+    # is called by log(), an extra level of indirection is added because it is
+    # being called from inside log(). In other words, in order to get the correct
+    # caller, it has to go up one more level than if calling _get_logger_name
+    # from outside of log(). When debug._get_logger_name is called directly from
+    # this function, it points to the caller of debug._get_logger_name, which is
+    # the same as the caller of log(), which is why we call it with 2 here.
+    # Perhaps seeing it laid out will help:
+    # logger=debug.logger.name here is tests.test_base, this module.
+    # (this function) -> log() -> _get_logger_name() = 3
+    # (this function) -> _get_logger_name() = 2
+    # Calling _get_logger_name() only needs to go up 2 levels to get the same name
+    # as when log() is called by this function.
+    # Make sense? I hope so.
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(1, "Test message: %s", "value")
-        # The name should match the logger name assigned in the fixture
-        assert caplog.records[0].name == debug.logger.name
+        # The name should match the logger name up two levels.
+        assert caplog.records[0].name == expected
 
 
 def test_log_with_custom_stacklevel(debug, caplog):
@@ -582,13 +599,25 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
         5: debug.lv5,
     }
 
+    expected = debug._get_logger_name(1)
+    # So why does expected look for level 1 here?
+    # It looks for 2 in test_log_with_default_stacklevel, so why 1 here?
+    # Because it's parametrized and called from within a loop, so the stack level
+    # is different. When log() is called from within lvX(), it adds an extra
+    # level of indirection, so to get the caller of lvX(), we have to go up one
+    # more level than when calling log() directly. When debug._get_logger_name is
+    # called directly from this function, it points to the caller of
+    # debug._get_logger_name, which is this function.
+    # The caller of log() is lvX(), and the caller of lvX() is this function.
+    # Therefore, we need to go up one level to get the same name as
+    # when log() is called by lvX(), which is why we call it with 1 here.
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         log_methods[log_level](f"Test message level {log_level}: %s", "value")
-        expected = f"DEBUG{log_level} Test message level {log_level}: value"
-        assert (expected in caplog.text) == should_log
+        msg = f"DEBUG{log_level} Test message level {log_level}: value"
+        assert (msg in caplog.text) == should_log
         if should_log:
             # Should match the logger name assigned in the fixture
-            assert caplog.records[0].name == debug.logger.name
+            assert caplog.records[0].name == expected
 
 
 def test_lv1_logs_unconditionally(debug, caplog):
