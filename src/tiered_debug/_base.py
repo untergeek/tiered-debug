@@ -25,10 +25,10 @@ Examples:
 import logging
 import platform
 import sys
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any, Literal, TypeAlias
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 _SysExcInfoType: TypeAlias = tuple[type[BaseException], BaseException, TracebackType | None] | tuple[None, None, None]
 _ExcInfoType: TypeAlias = bool | _SysExcInfoType | BaseException | None
@@ -70,6 +70,14 @@ class TieredDebug:
         >>> debug.lv1("Level 1 message")
         >>> debug.lv3("Level 3 message")  # Not logged
     """
+
+    # Type stubs for dynamic methods (visible to type checkers)
+    if TYPE_CHECKING:
+        lv1: Callable[..., None]  # pyright: ignore[reportUninitializedInstanceVariable]
+        lv2: Callable[..., None]  # pyright: ignore[reportUninitializedInstanceVariable]
+        lv3: Callable[..., None]  # pyright: ignore[reportUninitializedInstanceVariable]
+        lv4: Callable[..., None]  # pyright: ignore[reportUninitializedInstanceVariable]
+        lv5: Callable[..., None]  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def __init__(
         self,

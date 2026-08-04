@@ -28,7 +28,7 @@ from tiered_debug._base import DEFAULTS, TieredDebug
 BASENAME = "tiered_debug._base"
 """Module name for debug.logger"""
 
-# pyright: reportPrivateUsage=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
+# pyright: reportPrivateUsage=false
 
 @pytest.fixture
 def debug():
@@ -624,7 +624,7 @@ def test_log_levels(debug: TieredDebug, caplog: pytest.LogCaptureFixture, debug_
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    log_methods = {  # pyright: ignore[reportUnknownVariableType]
+    log_methods = {
         1: debug.lv1,
         2: debug.lv2,
         3: debug.lv3,
@@ -830,7 +830,7 @@ def test_log_with_extra(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
         # Filter for DEBUG records only (exclude handler info log)
         log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
         assert len(log_records) >= 1
-        assert log_records[0].custom == "custom_value"
+        assert log_records[0].custom == "custom_value"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
 
 
 def test_log_with_extra_none(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
@@ -901,7 +901,7 @@ def test_log_all_parameters_combined(debug: TieredDebug, caplog: pytest.LogCaptu
         # Filter for DEBUG records only (exclude handler info log)
         log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
         assert len(log_records) >= 1
-        assert log_records[0].custom == "combined_value"
+        assert log_records[0].custom == "combined_value"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
 
 
 def test_log_with_invalid_extra_type(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
