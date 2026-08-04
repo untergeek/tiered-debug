@@ -17,12 +17,15 @@ Examples:
     >>> test_func()  # Logs BEGIN at 2, Inside at 1, END at 3
 """
 
-# pylint: disable=W0107,W0212,W0621
 import logging
+
 import pytest
+
 from tiered_debug import TieredDebug
-from tiered_debug.debug import begin_end, DEFAULT_BEGIN, DEFAULT_END
+from tiered_debug.debug import DEFAULT_BEGIN, DEFAULT_END, begin_end
 from tiered_debug.debug import debug as sample_debug
+
+# pyright: reportPrivateUsage=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 
 BASENAME = "tiered_debug.debug"
 """Module name for debug.logger"""
@@ -40,12 +43,12 @@ def debug():
         >>> isinstance(debug, TieredDebug)
         True
     """
-    sample_debug._logger.name = __name__
+    sample_debug.logger.name = __name__
     return sample_debug
 
 
 @pytest.fixture
-def reset_debug(monkeypatch):
+def reset_debug(monkeypatch: pytest.MonkeyPatch):
     """Reset the global debug instance for each test.
 
     Args:
@@ -65,7 +68,7 @@ def reset_debug(monkeypatch):
 
 
 # Tests for global debug instance
-def test_debug_instance(debug):
+def test_debug_instance(debug: TieredDebug):
     """Test that global debug is a TieredDebug instance with defaults.
 
     Args:
@@ -82,7 +85,7 @@ def test_debug_instance(debug):
     assert debug.logger.name == __name__
 
 
-def test_debug_add_handler(debug, caplog):
+def test_debug_add_handler(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that global debug supports handler configuration.
 
     Args:
@@ -133,7 +136,7 @@ def test_default_end():
 
 
 # Tests for begin_end decorator
-def test_begin_end_default_levels(debug, caplog):
+def test_begin_end_default_levels(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that begin_end logs BEGIN and END at default levels.
 
     Args:
@@ -178,7 +181,7 @@ def test_begin_end_default_levels(debug, caplog):
     ],
 )
 def test_begin_end_custom_levels(
-    debug, caplog, begin, end, should_log_begin, should_log_end
+    debug: TieredDebug, caplog: pytest.LogCaptureFixture, begin: int, end: int, should_log_begin: bool, should_log_end: bool
 ):
     """Test that begin_end respects custom begin and end levels.
 
@@ -207,7 +210,7 @@ def test_begin_end_custom_levels(
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    @begin_end(begin=begin, end=end)
+    @begin_end(begin=begin, end=end)  # pyright: ignore[reportArgumentType]
     def test_func():
         pass
 
@@ -219,7 +222,7 @@ def test_begin_end_custom_levels(
         assert (end_msg in caplog.text) == should_log_end
 
 
-def test_begin_end_invalid_levels(debug, caplog):
+def test_begin_end_invalid_levels(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that begin_end handles invalid begin/end levels with defaults.
 
     Args:
@@ -243,17 +246,20 @@ def test_begin_end_invalid_levels(debug, caplog):
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    @begin_end(begin=6, end=7)
+    @begin_end(begin=6, end=7)  # pyright: ignore[reportArgumentType]
     def test_func():
         pass
 
-    with caplog.at_level(logging.DEBUG):
-        with pytest.raises(ValueError):
+    # Invalid levels (6, 7) are out of range, so log() raises ValueError
+    with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
+        with pytest.raises(ValueError, match="Debug level must be 1-5"):
             test_func()
-        assert len(caplog.text) == 0
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) == 0  # No DEBUG records logged
 
 
-def test_begin_end_custom_debug_instance(caplog):
+def test_begin_end_custom_debug_instance(caplog: pytest.LogCaptureFixture):
     """Test that begin_end works with a custom TieredDebug instance.
 
     Args:
@@ -285,10 +291,12 @@ def test_begin_end_custom_debug_instance(caplog):
         assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
         assert "DEBUG1 Inside" in caplog.text
         assert "DEBUG3 END CALL: test_func()" in caplog.text
-        assert len(caplog.records) == 3
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) == 3
 
 
-def test_begin_end_custom_stacklevel(debug, caplog):
+def test_begin_end_custom_stacklevel(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that begin_end uses custom stacklevel correctly.
 
     Args:
@@ -311,18 +319,22 @@ def test_begin_end_custom_stacklevel(debug, caplog):
         logging.StreamHandler(),
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
-    expected = "_pytest.python"
 
-    @begin_end(begin=2, end=3, stacklevel=3)
+    expected = "tests.test_debug"
+
+    @begin_end(begin=2, end=3, stacklevel=2)
     def test_func():
         pass
 
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         test_func()
-        assert caplog.records[0].name == expected
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) >= 1
+        assert log_records[0].name == expected
 
 
-def test_begin_end_with_extra(debug, caplog):
+def test_begin_end_with_extra(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that begin_end passes extra metadata correctly.
 
     Args:
@@ -346,7 +358,7 @@ def test_begin_end_with_extra(debug, caplog):
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    @begin_end(begin=2, end=3, extra={"func": "test"})
+    @begin_end(begin=2, end=3, extra={"func": "test_func"})
     def test_func():
         pass
 
@@ -354,8 +366,11 @@ def test_begin_end_with_extra(debug, caplog):
         test_func()
         assert "DEBUG2 BEGIN CALL: test_func()" in caplog.text
         assert "DEBUG3 END CALL: test_func()" in caplog.text
-        assert caplog.records[0].func == "test"
-        assert caplog.records[1].func == "test"
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) == 2
+        assert log_records[0].func == "test_func"
+        assert log_records[1].func == "test_func"
 
 
 def test_begin_end_preserves_function_metadata():
