@@ -17,16 +17,18 @@ Examples:
     >>> debug.lv3("Not logged")  # Ignored (level 3 > 2)
 """
 
-# pylint: disable=W0212,W0621
 import logging
-import sys
 import platform
+import sys
+
 import pytest
+
 from tiered_debug._base import DEFAULTS, TieredDebug
 
 BASENAME = "tiered_debug._base"
 """Module name for debug.logger"""
 
+# pyright: reportPrivateUsage=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
 
 @pytest.fixture
 def debug():
@@ -44,7 +46,7 @@ def debug():
 
 
 # Tests for initialization
-def test_default_initialization(debug):
+def test_default_initialization(debug: TieredDebug):
     """Test default initialization values.
 
     Verifies that a new TieredDebug instance uses default debug and stack
@@ -84,7 +86,7 @@ def test_custom_initialization():
 
 
 # Tests for level property and setter
-def test_level_property(debug):
+def test_level_property(debug: TieredDebug):
     """Test that level property returns the current level.
 
     Examples:
@@ -97,7 +99,7 @@ def test_level_property(debug):
     assert debug.level == 3
 
 
-def test_level_setter_valid(debug):
+def test_level_setter_valid(debug: TieredDebug):
     """Test that level setter sets level correctly for valid inputs.
 
     Examples:
@@ -114,7 +116,7 @@ def test_level_setter_valid(debug):
     assert debug._level == 5
 
 
-def test_level_setter_invalid(debug, caplog):
+def test_level_setter_invalid(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that level setter handles invalid inputs correctly.
 
     Args:
@@ -141,7 +143,7 @@ def test_level_setter_invalid(debug, caplog):
 
 
 # Tests for stacklevel property and setter
-def test_stacklevel_property(debug):
+def test_stacklevel_property(debug: TieredDebug):
     """Test that stacklevel property returns the current stacklevel.
 
     Examples:
@@ -154,7 +156,7 @@ def test_stacklevel_property(debug):
     assert debug.stacklevel == 3
 
 
-def test_stacklevel_setter_valid(debug):
+def test_stacklevel_setter_valid(debug: TieredDebug):
     """Test that stacklevel setter sets stacklevel correctly for valid inputs.
 
     Examples:
@@ -171,7 +173,7 @@ def test_stacklevel_setter_valid(debug):
     assert debug._stacklevel == 9
 
 
-def test_stacklevel_setter_invalid(debug, caplog):
+def test_stacklevel_setter_invalid(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that stacklevel setter handles invalid inputs correctly.
 
     Args:
@@ -198,7 +200,7 @@ def test_stacklevel_setter_invalid(debug, caplog):
 
 
 # Tests for logger property
-def test_logger_property(debug):
+def test_logger_property(debug: TieredDebug):
     """Test that logger property returns the instance-level logger.
 
     Examples:
@@ -223,7 +225,7 @@ def test_logger_custom_name():
 
 
 # Tests for add_handler method
-def test_add_handler(debug, caplog):
+def test_add_handler(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that add_handler adds a handler and logs correctly.
 
     Args:
@@ -248,7 +250,7 @@ def test_add_handler(debug, caplog):
         assert handler in debug.logger.handlers
 
 
-def test_add_handler_duplicate(debug, caplog):
+def test_add_handler_duplicate(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that add_handler skips duplicate handlers with an info message.
 
     Args:
@@ -273,7 +275,7 @@ def test_add_handler_duplicate(debug, caplog):
 
 
 # Tests for check_val method
-def test_check_val_valid(debug):
+def test_check_val_valid(debug: TieredDebug):
     """Test that check_val returns valid values unchanged.
 
     Args:
@@ -290,7 +292,7 @@ def test_check_val_valid(debug):
     assert debug.check_val(9, "stack") == 9
 
 
-def test_check_val_invalid(debug, caplog):
+def test_check_val_invalid(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that check_val returns default values for invalid inputs.
 
     Args:
@@ -313,7 +315,7 @@ def test_check_val_invalid(debug, caplog):
         assert "Invalid stack level: 10" in caplog.text
 
 
-def test_check_val_invalid_kind(debug):
+def test_check_val_invalid_kind(debug: TieredDebug):
     """Test that check_val raises ValueError for invalid kind.
 
     Args:
@@ -328,11 +330,11 @@ def test_check_val_invalid_kind(debug):
         Invalid kind: invalid. Must be 'debug' or 'stack'
     """
     with pytest.raises(ValueError, match="Invalid kind: invalid"):
-        debug.check_val(3, "invalid")
+        _ = debug.check_val(3, "invalid")
 
 
 # Tests for _select_frame_getter and _get_logger_name
-def test_get_logger_name_valid(debug):
+def test_get_logger_name_valid(debug: TieredDebug):
     """Test that _get_logger_name returns correct module name.
 
     Args:
@@ -347,7 +349,7 @@ def test_get_logger_name_valid(debug):
     assert name == __name__
 
 
-def test_get_logger_name_invalid_stack(debug):
+def test_get_logger_name_invalid_stack(debug: TieredDebug):
     """Test that _get_logger_name handles invalid stack levels.
 
     Args:
@@ -362,7 +364,7 @@ def test_get_logger_name_invalid_stack(debug):
     assert name == "unknown"
 
 
-def test_select_frame_getter_cpython(debug, monkeypatch):
+def test_select_frame_getter_cpython(debug: TieredDebug, monkeypatch: pytest.MonkeyPatch):
     """Test that _select_frame_getter uses sys._getframe in CPython.
 
     Args:
@@ -380,7 +382,7 @@ def test_select_frame_getter_cpython(debug, monkeypatch):
     assert getter is sys._getframe
 
 
-def test_select_frame_getter_non_cpython(debug, monkeypatch):
+def test_select_frame_getter_non_cpython(debug: TieredDebug, monkeypatch: pytest.MonkeyPatch):
     """Test that _select_frame_getter uses inspect.currentframe in non-CPython.
 
     Args:
@@ -403,7 +405,7 @@ def test_select_frame_getter_non_cpython(debug, monkeypatch):
 
 
 # Tests for change_level context manager
-def test_change_level(debug):
+def test_change_level(debug: TieredDebug):
     """Test that change_level temporarily changes the level.
 
     Args:
@@ -425,7 +427,7 @@ def test_change_level(debug):
     assert debug.level == 2  # Restored
 
 
-def test_change_level_with_exception(debug):
+def test_change_level_with_exception(debug: TieredDebug):
     """Test that change_level restores level despite exceptions.
 
     Args:
@@ -453,8 +455,35 @@ def test_change_level_with_exception(debug):
     assert debug.level == 2  # Restored
 
 
+def test_change_level_invalid_level(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
+    """Test that change_level validates the level parameter.
+
+    Args:
+        debug: TieredDebug instance. (TieredDebug)
+        caplog: Pytest caplog fixture for capturing logs.
+
+    Examples:
+        >>> debug = TieredDebug(level=2)
+        >>> with debug.change_level(0):  # Invalid level
+        ...     pass
+        >>> debug.level
+        2
+    """
+    debug.level = 2
+
+    with caplog.at_level(logging.WARNING, logger=debug.logger.name):
+        with debug.change_level(0):
+            assert debug.level == DEFAULTS["debug"]
+
+    caplog.clear()
+
+    with caplog.at_level(logging.WARNING, logger=debug.logger.name):
+        with debug.change_level(6):
+            assert debug.level == DEFAULTS["debug"]
+
+
 # Tests for log method
-def test_log_valid_level(debug, caplog):
+def test_log_valid_level(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method logs messages at valid levels with args.
 
     Args:
@@ -474,7 +503,7 @@ def test_log_valid_level(debug, caplog):
         assert "DEBUG2 Test message: value" in caplog.text
 
 
-def test_log_invalid_level(debug):
+def test_log_invalid_level(debug: TieredDebug):
     """Test that log method raises ValueError for invalid levels.
 
     Args:
@@ -489,10 +518,10 @@ def test_log_invalid_level(debug):
         Debug level must be 1-5
     """
     with pytest.raises(ValueError, match="Debug level must be 1-5"):
-        debug.log(6, "Invalid level")
+        debug.log(6, "Invalid level")  # pyright: ignore[reportArgumentType]
 
 
-def test_log_with_default_stacklevel(debug, caplog):
+def test_log_with_default_stacklevel(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log uses default stacklevel if none provided.
 
     Args:
@@ -527,10 +556,13 @@ def test_log_with_default_stacklevel(debug, caplog):
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(1, "Test message: %s", "value")
         # The name should match the logger name up two levels.
-        assert caplog.records[0].name == expected
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) >= 1
+        assert log_records[0].name == expected
 
 
-def test_log_with_custom_stacklevel(debug, caplog):
+def test_log_with_custom_stacklevel(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log uses provided stacklevel.
 
     Args:
@@ -547,9 +579,10 @@ def test_log_with_custom_stacklevel(debug, caplog):
     expected = "pluggy._callers"
     with caplog.at_level(logging.DEBUG, logger=debug.logger.name):
         debug.log(1, "Test message: %s", "value", stacklevel=4)
-        assert (
-            caplog.records[0].name == expected
-        )  # In testing, stacklevel 4 points to "pluggy._callers"
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) >= 1
+        assert log_records[0].name == expected  # In testing, stacklevel 4 points to "pluggy._callers"
 
 
 # Tests for logging functions
@@ -567,7 +600,7 @@ def test_log_with_custom_stacklevel(debug, caplog):
         (5, 5, True),  # lv5 should log at debug level 5
     ],
 )
-def test_log_levels(debug, caplog, debug_level, log_level, should_log):
+def test_log_levels(debug: TieredDebug, caplog: pytest.LogCaptureFixture, debug_level: int, log_level: int, should_log: bool):
     """Test that log functions respect the current debug level.
 
     Args:
@@ -591,7 +624,7 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
         formatter=logging.Formatter("%(funcName)s:%(lineno)d %(message)s"),
     )
 
-    log_methods = {
+    log_methods = {  # pyright: ignore[reportUnknownVariableType]
         1: debug.lv1,
         2: debug.lv2,
         3: debug.lv3,
@@ -617,10 +650,13 @@ def test_log_levels(debug, caplog, debug_level, log_level, should_log):
         assert (msg in caplog.text) == should_log
         if should_log:
             # Should match the logger name assigned in the fixture
-            assert caplog.records[0].name == expected
+            # Note: caplog may include the "Handler added to logger" info log
+            log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+            assert len(log_records) >= 1
+            assert log_records[0].name == expected
 
 
-def test_lv1_logs_unconditionally(debug, caplog):
+def test_lv1_logs_unconditionally(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that lv1 logs messages without checking debug level.
 
     Args:
@@ -648,7 +684,7 @@ def test_lv1_logs_unconditionally(debug, caplog):
 
 
 # Tests for exc_info, stack_info, and extra parameters
-def test_log_with_exc_info(debug, caplog):
+def test_log_with_exc_info(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method includes exception info when exc_info=True.
 
     Args:
@@ -680,7 +716,7 @@ def test_log_with_exc_info(debug, caplog):
         assert "ValueError: Test error" in caplog.text
 
 
-def test_log_without_exc_info(debug, caplog):
+def test_log_without_exc_info(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method excludes exception info when exc_info=False.
 
     Args:
@@ -712,7 +748,7 @@ def test_log_without_exc_info(debug, caplog):
         assert "ValueError: Test error" not in caplog.text
 
 
-def test_log_with_stack_info(debug, caplog):
+def test_log_with_stack_info(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method includes stack info when stack_info=True.
 
     Args:
@@ -738,7 +774,7 @@ def test_log_with_stack_info(debug, caplog):
         assert "Stack (most recent call last):" in caplog.text
 
 
-def test_log_without_stack_info(debug, caplog):
+def test_log_without_stack_info(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method excludes stack info when stack_info=False.
 
     Args:
@@ -764,7 +800,7 @@ def test_log_without_stack_info(debug, caplog):
         assert "Stack (most recent call last):" not in caplog.text
 
 
-def test_log_with_extra(debug, caplog):
+def test_log_with_extra(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method includes extra metadata when provided.
 
     Args:
@@ -791,10 +827,13 @@ def test_log_with_extra(debug, caplog):
             extra={"custom": "custom_value"},
         )
         assert "DEBUG1 Extra test: value" in caplog.text
-        assert caplog.records[0].custom == "custom_value"
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) >= 1
+        assert log_records[0].custom == "custom_value"
 
 
-def test_log_with_extra_none(debug, caplog):
+def test_log_with_extra_none(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method handles extra=None by setting it to empty dict.
 
     Args:
@@ -820,7 +859,7 @@ def test_log_with_extra_none(debug, caplog):
         # No errors, logs successfully with extra={}
 
 
-def test_log_all_parameters_combined(debug, caplog):
+def test_log_all_parameters_combined(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test log method with exc_info, stack_info, and extra combined.
 
     Args:
@@ -859,10 +898,13 @@ def test_log_all_parameters_combined(debug, caplog):
         assert "DEBUG1 Combined test: value" in caplog.text
         assert "ValueError: Combined test error" in caplog.text
         assert "Stack (most recent call last):" in caplog.text
-        assert caplog.records[0].custom == "combined_value"
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) >= 1
+        assert log_records[0].custom == "combined_value"
 
 
-def test_log_with_invalid_extra_type(debug, caplog):
+def test_log_with_invalid_extra_type(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method handles invalid extra type gracefully.
 
     Args:
@@ -892,7 +934,7 @@ def test_log_with_invalid_extra_type(debug, caplog):
             assert expected not in caplog.text
 
 
-def test_log_with_empty_message(debug, caplog):
+def test_log_with_empty_message(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method handles empty message.
 
     Args:
@@ -917,7 +959,7 @@ def test_log_with_empty_message(debug, caplog):
         assert "DEBUG1 " in caplog.text  # Empty message logged
 
 
-def test_log_with_multiple_handlers(debug, caplog):
+def test_log_with_multiple_handlers(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method works with multiple handlers.
 
     Args:
@@ -947,7 +989,7 @@ def test_log_with_multiple_handlers(debug, caplog):
         assert len(debug.logger.handlers) == before + 2  # Two handlers added
 
 
-def test_log_performance(debug, caplog):
+def test_log_performance(debug: TieredDebug, caplog: pytest.LogCaptureFixture):
     """Test that log method performs efficiently with new parameters.
 
     Args:
@@ -976,4 +1018,6 @@ def test_log_performance(debug, caplog):
                 extra={"count": _},
             )
         assert "DEBUG1 Performance test:" in caplog.text
-        assert len(caplog.records) == 100  # All calls logged
+        # Filter for DEBUG records only (exclude handler info log)
+        log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
+        assert len(log_records) == 100  # All 100 calls logged

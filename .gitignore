@@ -1,6 +1,7 @@
-# Google Drive
-.tmp.driveupload/
-.tmp.drivedownload/
+# Local Ignores
+graphify-out/
+.opencode/
+tasks.md
 
 # macOS
 .DS_Store
