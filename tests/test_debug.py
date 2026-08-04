@@ -25,7 +25,7 @@ from tiered_debug import TieredDebug
 from tiered_debug.debug import DEFAULT_BEGIN, DEFAULT_END, begin_end
 from tiered_debug.debug import debug as sample_debug
 
-# pyright: reportPrivateUsage=false, reportAttributeAccessIssue=false, reportUnknownMemberType=false
+# pyright: reportPrivateUsage=false
 
 BASENAME = "tiered_debug.debug"
 """Module name for debug.logger"""
@@ -369,8 +369,8 @@ def test_begin_end_with_extra(debug: TieredDebug, caplog: pytest.LogCaptureFixtu
         # Filter for DEBUG records only (exclude handler info log)
         log_records = [r for r in caplog.records if r.levelno == logging.DEBUG]
         assert len(log_records) == 2
-        assert log_records[0].func == "test_func"
-        assert log_records[1].func == "test_func"
+        assert log_records[0].func == "test_func"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
+        assert log_records[1].func == "test_func"  # pyright: ignore[reportAttributeAccessIssue, reportUnknownMemberType]
 
 
 def test_begin_end_preserves_function_metadata():

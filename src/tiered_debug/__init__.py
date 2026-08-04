@@ -15,7 +15,7 @@ Examples:
     >>> isinstance(DebugLevel(1), int)
     True
     >>> __version__
-    '1.5.0'
+    '1.5.1'
     >>> __author__
     'Aaron Mildenstein'
 
@@ -42,7 +42,7 @@ def get_copyright_years() -> str:
         return f"{FIRST_YEAR}"
     return f"{FIRST_YEAR}-{now.year}"
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 __author__ = "Aaron Mildenstein"
 __copyright__ = f"{get_copyright_years()}, Aaron Mildenstein"
 __license__ = "Apache 2.0"
