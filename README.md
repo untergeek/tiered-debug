@@ -25,4 +25,4 @@ Visit the [tiered-debug documentation](https://tiered-debug.readthedocs.io/en/la
 
 `tiered-debug` is distributed under the terms of the [Apache](LICENSE) license.
 
-© Copyright 2025 Aaron Mildenstein
+© Copyright 2025-2026 Aaron Mildenstein
